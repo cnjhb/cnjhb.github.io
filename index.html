@@ -514,6 +514,132 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/01/08/Android-run-debian/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="安哲贝">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Entorpy's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/01/08/Android-run-debian/" itemprop="url">在安卓上使用运行debian</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-01-08T20:02:53+08:00">
+                2019-01-08
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>人在外面，有时候可能需要用linux做一点小事情。但是呢又不想带电脑，尽管可以通过ssh连接你的pc或者vps来干，但是这样还是不是如何方便。那么我这个方法就有了意义。<br>我这个方法主要是通过编写一个适合于你的设备的initscript并执行它来引导启动在你安卓设备上的一个linux发行版文件系统。在这里我用debian为例，但是这个方法理论上使用于所有。<br>注意:如果你的设备没有获得root那么你也许就可以退出这篇博文了。</p>
+<h2 id="准备需要的文件与工具"><a href="#准备需要的文件与工具" class="headerlink" title="准备需要的文件与工具"></a>准备需要的文件与工具</h2><h3 id="1-busybox"><a href="#1-busybox" class="headerlink" title="1.busybox"></a>1.busybox</h3><p>需要使用到busybox中的chroot，mount，mdev。如果你的手机上那么就不用安装。</p>
+<h3 id="2-终端模拟器"><a href="#2-终端模拟器" class="headerlink" title="2.终端模拟器"></a>2.终端模拟器</h3><p>需要访问本地shell</p>
+<h3 id="3-debian的文件系统"><a href="#3-debian的文件系统" class="headerlink" title="3.debian的文件系统"></a>3.debian的文件系统</h3><p>因为以debian为例所以是debian，也可以是其他。请注意这个文件系统一定要是兼容你处理器架构的。这个文件系统可以自己用debootstrap制作。也可以直接下载linuxdeploy仓库里面的使用，在文章的最后面我将贴出一部分linuxdeploy仓库里面的linux发行版的文件系统，如果你愿意支持linuxdeploy的作者的话可以去linuxdeploy里购买这些东西，毕竟人家也是要吃饭的。</p>
+<h2 id="开始"><a href="#开始" class="headerlink" title="开始"></a>开始</h2><p>1.首先需要把处理一下这个下载的debian文件系统。我这里是把这个文件系统放在data分区的某个目录。你可以单独放在一个分区或者制作成镜像文件，这样的隔离效果可能会更好吧。<br>2.把安装在系统里的静态busybox拷贝一份到你debian文件系统里面去，因为initscript引导启动这个debian的时候需要初始化dev，但是Debian的udev依赖于内核中的devtmpfs，然而Android 的内核多半精简掉了这个组件。所以我们需要使用busybox中的mdev来代替udev。如果你安装的busybox没有包含mdev那么需要换一个busybox。<br>3.编写适用于你的设备的initscript，这个需要根据个人的手机来编写但是大多是通用的。下面我贴出我的initscript。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#! /bin/dash</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 初始化用户变量 </span></span><br><span class="line"><span class="built_in">export</span> PATH=/bin:/usr/bin:/usr/<span class="built_in">local</span>/bin:/sbin:/usr/sbin:/usr/<span class="built_in">local</span>/sbin</span><br><span class="line"><span class="built_in">export</span> HOME=/root </span><br><span class="line"><span class="built_in">export</span> SHELL=/bin/bash </span><br><span class="line"><span class="built_in">export</span> TERMINFO=/etc/terminfo </span><br><span class="line"><span class="built_in">export</span> LD_LIBRARY_PATH=/lib:/usr/lib</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置主机名 </span></span><br><span class="line">hostname JHB</span><br><span class="line"></span><br><span class="line"><span class="comment">#挂载虚拟文件系统</span></span><br><span class="line">mount sysfs /sys -t sysfs </span><br><span class="line">mount proc /proc -t proc </span><br><span class="line">mount tmpfs /dev -t tmpfs</span><br><span class="line">busybox mdev -s</span><br><span class="line">mkdir /dev/pts </span><br><span class="line">mount devpts /dev/pts -t devpts </span><br><span class="line">mkdir /dev/shm</span><br><span class="line">mount -t tmpfs tmpfs /dev/shm</span><br><span class="line">chmod -R 777 /dev/ </span><br><span class="line">mount tmpfs /run/lock -t tmpfs -o rw,nosuid,nodev,noexec,relatime,size=5120k </span><br><span class="line">clear</span><br><span class="line">/bin/bash</span><br></pre></td></tr></table></figure></p>
+<p>这个script的保存的位置可以随意，但是必须要在你的debian文件系统里面，我建议是放在debian文件系统的根目录。<br>4.测试并运行吧，然后根据自己的需求进行一定修改。在终端里输入:<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chroot 你的debian文件系统的目录 以debian文件系统为根目录initscript的位置</span><br></pre></td></tr></table></figure></p>
+<h2 id="一部分linuxdeploy仓库的linux发行版文件系统"><a href="#一部分linuxdeploy仓库的linux发行版文件系统" class="headerlink" title="一部分linuxdeploy仓库的linux发行版文件系统"></a>一部分linuxdeploy仓库的linux发行版文件系统</h2><p><a href="http://hub.meefik.ru/rootfs/archlinux_arm.tgz" target="_blank" rel="noopener">archlinux_arm</a><br><a href="http://hub.meefik.ru/rootfs/archlinux_x86.tgz" target="_blank" rel="noopener">archlinux_x86</a><br><a href="http://hub.meefik.ru/rootfs/centos_arm.tgz" target="_blank" rel="noopener">centos_arm</a><br><a href="http://hub.meefik.ru/rootfs/centos_x86.tgz" target="_blank" rel="noopener">centos_x86</a><br><a href="http://hub.meefik.ru/rootfs/debian_arm.tgz" target="_blank" rel="noopener">debian_arm</a><br><a href="http://hub.meefik.ru/rootfs/debian_x86.tgz" target="_blank" rel="noopener">debian_x86</a><br>就提供这六个吧，想用其他的可以自己去linuxdeploy里购买，但是其实只要知道自己的需要然后根据我上面的链接改一下就好了。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/01/08/Android-run-budybox/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -607,132 +733,6 @@
 <p>然后终端就会卡着不动，这正常因为我没有在initab设置本地登录。这也不可以。关闭这个终端用telnet连接即可<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">telnet 127.0.0.1:23</span><br></pre></td></tr></table></figure></p>
 <p>因为登录认证文件用的是宿主机的，所以登录密码与宿主机一致。</p>
 <p>如果没有什么问题就成功了，但是此时目标系统还未安装各类工具软件，busybox自带dpkg可以在debian的官网上下载apt以及依赖包安装并配置好，这里就不再详述了。<br>…</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/01/08/Android-run-debian/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="安哲贝">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Entorpy's blog">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2019/01/08/Android-run-debian/" itemprop="url">在安卓上使用运行debian</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-01-08T20:02:53+08:00">
-                2019-01-08
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>人在外面，有时候可能需要用linux做一点小事情。但是呢又不想带电脑，尽管可以通过ssh连接你的pc或者vps来干，但是这样还是不是如何方便。那么我这个方法就有了意义。<br>我这个方法主要是通过编写一个适合于你的设备的initscript并执行它来引导启动在你安卓设备上的一个linux发行版文件系统。在这里我用debian为例，但是这个方法理论上使用于所有。<br>注意:如果你的设备没有获得root那么你也许就可以退出这篇博文了。</p>
-<h2 id="准备需要的文件与工具"><a href="#准备需要的文件与工具" class="headerlink" title="准备需要的文件与工具"></a>准备需要的文件与工具</h2><h3 id="1-busybox"><a href="#1-busybox" class="headerlink" title="1.busybox"></a>1.busybox</h3><p>需要使用到busybox中的chroot，mount，mdev。如果你的手机上那么就不用安装。</p>
-<h3 id="2-终端模拟器"><a href="#2-终端模拟器" class="headerlink" title="2.终端模拟器"></a>2.终端模拟器</h3><p>需要访问本地shell</p>
-<h3 id="3-debian的文件系统"><a href="#3-debian的文件系统" class="headerlink" title="3.debian的文件系统"></a>3.debian的文件系统</h3><p>因为以debian为例所以是debian，也可以是其他。请注意这个文件系统一定要是兼容你处理器架构的。这个文件系统可以自己用debootstrap制作。也可以直接下载linuxdeploy仓库里面的使用，在文章的最后面我将贴出一部分linuxdeploy仓库里面的linux发行版的文件系统，如果你愿意支持linuxdeploy的作者的话可以去linuxdeploy里购买这些东西，毕竟人家也是要吃饭的。</p>
-<h2 id="开始"><a href="#开始" class="headerlink" title="开始"></a>开始</h2><p>1.首先需要把处理一下这个下载的debian文件系统。我这里是把这个文件系统放在data分区的某个目录。你可以单独放在一个分区或者制作成镜像文件，这样的隔离效果可能会更好吧。<br>2.把安装在系统里的静态busybox拷贝一份到你debian文件系统里面去，因为initscript引导启动这个debian的时候需要初始化dev，但是Debian的udev依赖于内核中的devtmpfs，然而Android 的内核多半精简掉了这个组件。所以我们需要使用busybox中的mdev来代替udev。如果你安装的busybox没有包含mdev那么需要换一个busybox。<br>3.编写适用于你的设备的initscript，这个需要根据个人的手机来编写但是大多是通用的。下面我贴出我的initscript。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#! /bin/dash</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 初始化用户变量 </span></span><br><span class="line"><span class="built_in">export</span> PATH=/bin:/usr/bin:/usr/<span class="built_in">local</span>/bin:/sbin:/usr/sbin:/usr/<span class="built_in">local</span>/sbin</span><br><span class="line"><span class="built_in">export</span> HOME=/root </span><br><span class="line"><span class="built_in">export</span> SHELL=/bin/bash </span><br><span class="line"><span class="built_in">export</span> TERMINFO=/etc/terminfo </span><br><span class="line"><span class="built_in">export</span> LD_LIBRARY_PATH=/lib:/usr/lib</span><br><span class="line"></span><br><span class="line"><span class="comment">#设置主机名 </span></span><br><span class="line">hostname JHB</span><br><span class="line"></span><br><span class="line"><span class="comment">#挂载虚拟文件系统</span></span><br><span class="line">mount sysfs /sys -t sysfs </span><br><span class="line">mount proc /proc -t proc </span><br><span class="line">mount tmpfs /dev -t tmpfs</span><br><span class="line">busybox mdev -s</span><br><span class="line">mkdir /dev/pts </span><br><span class="line">mount devpts /dev/pts -t devpts </span><br><span class="line">mkdir /dev/shm</span><br><span class="line">mount -t tmpfs tmpfs /dev/shm</span><br><span class="line">chmod -R 777 /dev/ </span><br><span class="line">mount tmpfs /run/lock -t tmpfs -o rw,nosuid,nodev,noexec,relatime,size=5120k </span><br><span class="line">clear</span><br><span class="line">/bin/bash</span><br></pre></td></tr></table></figure></p>
-<p>这个script的保存的位置可以随意，但是必须要在你的debian文件系统里面，我建议是放在debian文件系统的根目录。<br>4.测试并运行吧，然后根据自己的需求进行一定修改。在终端里输入:<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chroot 你的debian文件系统的目录 以debian文件系统为根目录initscript的位置</span><br></pre></td></tr></table></figure></p>
-<h2 id="一部分linuxdeploy仓库的linux发行版文件系统"><a href="#一部分linuxdeploy仓库的linux发行版文件系统" class="headerlink" title="一部分linuxdeploy仓库的linux发行版文件系统"></a>一部分linuxdeploy仓库的linux发行版文件系统</h2><p><a href="http://hub.meefik.ru/rootfs/archlinux_arm.tgz" target="_blank" rel="noopener">archlinux_arm</a><br><a href="http://hub.meefik.ru/rootfs/archlinux_x86.tgz" target="_blank" rel="noopener">archlinux_x86</a><br><a href="http://hub.meefik.ru/rootfs/centos_arm.tgz" target="_blank" rel="noopener">centos_arm</a><br><a href="http://hub.meefik.ru/rootfs/centos_x86.tgz" target="_blank" rel="noopener">centos_x86</a><br><a href="http://hub.meefik.ru/rootfs/debian_arm.tgz" target="_blank" rel="noopener">debian_arm</a><br><a href="http://hub.meefik.ru/rootfs/debian_x86.tgz" target="_blank" rel="noopener">debian_x86</a><br>就提供这六个吧，想用其他的可以自己去linuxdeploy里购买，但是其实只要知道自己的需要然后根据我上面的链接改一下就好了。</p>
 
           
         
