@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="linux,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="其实在此之前有一篇通过编写initscript并执行来启动现有的linux发行版文件系统的博文，这样虽然能使用但是那些现有的linux中有很多无用的组件(如果因为安卓内核问题无法使用的udev还有systemd等等)并且精简起来相当麻烦，而且通过这种方式运行起来的还是有一些问题的。然后针对于以上情况处理了几天之后始终不能让自己满意，然后我就想到了自己编译一个busybox并用它来自制。这样确实很不">
+<meta name="keywords" content="linux">
+<meta property="og:type" content="article">
+<meta property="og:title" content="自制一个在安卓上运行的linux">
+<meta property="og:url" content="http://yoursite.com/2019/01/08/Android-run-budybox/index.html">
+<meta property="og:site_name" content="Entorpy&#39;s blog">
+<meta property="og:description" content="其实在此之前有一篇通过编写initscript并执行来启动现有的linux发行版文件系统的博文，这样虽然能使用但是那些现有的linux中有很多无用的组件(如果因为安卓内核问题无法使用的udev还有systemd等等)并且精简起来相当麻烦，而且通过这种方式运行起来的还是有一些问题的。然后针对于以上情况处理了几天之后始终不能让自己满意，然后我就想到了自己编译一个busybox并用它来自制。这样确实很不">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-03-10T04:16:59.417Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="自制一个在安卓上运行的linux">
+<meta name="twitter:description" content="其实在此之前有一篇通过编写initscript并执行来启动现有的linux发行版文件系统的博文，这样虽然能使用但是那些现有的linux中有很多无用的组件(如果因为安卓内核问题无法使用的udev还有systemd等等)并且精简起来相当麻烦，而且通过这种方式运行起来的还是有一些问题的。然后针对于以上情况处理了几天之后始终不能让自己满意，然后我就想到了自己编译一个busybox并用它来自制。这样确实很不">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/01/08/Android-run-budybox/">
+
+
+
+
+
+  <title>自制一个在安卓上运行的linux | Entorpy's blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Entorpy's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">投袂剑起，澄清泾渭</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br>
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-commonweal">
+          <a href="/404.html" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-heartbeat"></i> <br>
+            
+            公益404
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/01/08/Android-run-budybox/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="安哲贝">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Entorpy's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">自制一个在安卓上运行的linux</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-01-08T20:02:53+08:00">
+                2019-01-08
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>其实在此之前有一篇通过编写initscript并执行来启动现有的linux发行版文件系统的博文，这样虽然能使用但是那些现有的linux中有很多无用的组件(如果因为安卓内核问题无法使用的udev还有systemd等等)并且精简起来相当麻烦，而且通过这种方式运行起来的还是有一些问题的。<br>然后针对于以上情况处理了几天之后始终不能让自己满意，然后我就想到了自己编译一个busybox并用它来自制。这样确实很不错，busybox有很多工具而且体积相当的小，动态的还不到1m。更重要的是可以直接用busybox的linuxrc来启动自己制作的linux，这样的话和真机启动几乎一样，不用编写initscript。</p>
+<h2 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h2><p><a href="http://www.busybox.net/" target="_blank" rel="noopener">busybox</a>源代码一份<br>宿主机一台。因为我使用的手机所以并不需要配置交叉编译等，如果你的宿主机与你的手机处理器架构不兼容的话，可能需要配置交叉编译的环境。<br>手机得安装busybox，因为需要用到chroot，而这个工具一般都没有只能安装自带的busybox。</p>
+<h2 id="编译busybox并制作rootfs"><a href="#编译busybox并制作rootfs" class="headerlink" title="编译busybox并制作rootfs"></a>编译busybox并制作rootfs</h2><h3 id="1-编译并安装busybox"><a href="#1-编译并安装busybox" class="headerlink" title="1.编译并安装busybox"></a>1.编译并安装busybox</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># make defconfig</span></span><br><span class="line"><span class="comment"># make -j8</span></span><br><span class="line"><span class="comment"># make install</span></span><br></pre></td></tr></table></figure>
+<p>如果没有指定路径的话，busybox将会被安装在busybox源代码目录文件夹下的_install文件夹下。<br>把_install目录给剪切出来重命名，并完善这个rootfs</p>
+<h3 id="2-创建必要的文件夹并添加必要的库文件"><a href="#2-创建必要的文件夹并添加必要的库文件" class="headerlink" title="2.创建必要的文件夹并添加必要的库文件"></a>2.创建必要的文件夹并添加必要的库文件</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir -pv etc/init.d var/<span class="built_in">log</span> root home lib dev proc sys boot mnt media tmp share run</span><br></pre></td></tr></table></figure>
+<p>因为是编译的动态的busybox，所以需要c库文件。先通过ldd命令是哪些，然后再cp过来就ok。</p>
+<h3 id="3-为linuxrc进程提供配置文件：-inittab"><a href="#3-为linuxrc进程提供配置文件：-inittab" class="headerlink" title="3.为linuxrc进程提供配置文件：(inittab)"></a>3.为linuxrc进程提供配置文件：(inittab)</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">vim etc/initab</span><br><span class="line">内容如下</span><br><span class="line">::sysinit:/etc/init.d/rcS</span><br><span class="line"><span class="comment">#定义rcS的位置</span></span><br><span class="line">::once:/usr/sbin/telnetd -l /bin/login -p 23</span><br><span class="line"><span class="comment">#开启telnetd服务来进行登录</span></span><br></pre></td></tr></table></figure>
+<p>请注意因为安卓内核问题没法使用tty等串口设备，所以没法进行本地登录，一旦强行使用tty等串口设备进行本地登录时，sh会打印tty设备无法打开的错误在屏幕上。这也是我在这里定义使用telnetd服务远程登录的原因。</p>
+<h3 id="4-建立系统初始化脚本"><a href="#4-建立系统初始化脚本" class="headerlink" title="4.建立系统初始化脚本"></a>4.建立系统初始化脚本</h3><p>vim etc/init.d/rcS<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#! /bin/sh</span></span><br><span class="line">mount -t proc proc /proc</span><br><span class="line">mount -t sysfs sysfs /sys</span><br><span class="line">mount -t tmpfs tmpfs /dev</span><br><span class="line">mdev -s</span><br><span class="line">mkdir /dev/pts</span><br><span class="line">mount -t devpts devpts /dev/pts</span><br><span class="line">mkdir /dev/shm</span><br><span class="line">mount -t tmpfs tmpfs /dev/shm</span><br><span class="line">hostname -F /etc/hostname</span><br><span class="line">mount -a</span><br></pre></td></tr></table></figure></p>
+<h3 id="5-为系统准备一个“文件系统表”配置文件-etc-fstab"><a href="#5-为系统准备一个“文件系统表”配置文件-etc-fstab" class="headerlink" title="5.为系统准备一个“文件系统表”配置文件/etc/fstab"></a>5.为系统准备一个“文件系统表”配置文件/etc/fstab</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">touch /etc/fstab</span><br></pre></td></tr></table></figure>
+<p>我这里什么也不添加。</p>
+<h3 id="6-添加登录认证功能"><a href="#6-添加登录认证功能" class="headerlink" title="6.添加登录认证功能"></a>6.添加登录认证功能</h3><p>从宿主机复制group,passwd,shadow文件，并且只留下这些文件的root项。</p>
+<h3 id="7-为系统提供主机名称"><a href="#7-为系统提供主机名称" class="headerlink" title="7.为系统提供主机名称"></a>7.为系统提供主机名称</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">vim etc/hostname</span><br><span class="line">内容如下</span><br><span class="line">JHB</span><br></pre></td></tr></table></figure>
+<h3 id="8-为系统设置输入提示信息"><a href="#8-为系统设置输入提示信息" class="headerlink" title="8.为系统设置输入提示信息"></a>8.为系统设置输入提示信息</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">vim etc/profile</span><br><span class="line">内容如下</span><br><span class="line"><span class="built_in">export</span> PS1=<span class="string">'[\u@\h \A \W]\\$ '</span></span><br></pre></td></tr></table></figure>
+<h3 id="9-添加dns功能"><a href="#9-添加dns功能" class="headerlink" title="9.添加dns功能"></a>9.添加dns功能</h3><p>为名称解析服务复制必要的库文件，把宿主机的/lib目录下以文件文件名包括libnss_files的全部拷贝过来<br>为目标主机建立名称解析文件nsswitch.conf<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">vim etc/nsswitch.conf</span><br><span class="line">添加如下内容</span><br><span class="line">passwd:  files</span><br><span class="line">group:  files</span><br><span class="line">shadow:  files</span><br><span class="line">hosts:  files dns</span><br></pre></td></tr></table></figure></p>
+<p>设置dns服务器<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">vim etc/resolv.conf</span><br><span class="line">内容如下</span><br><span class="line">nameserver 111.8.14.18</span><br><span class="line">nameserver 211.142.211.124</span><br></pre></td></tr></table></figure></p>
+<p>从宿主机上复制hosts文件。</p>
+<h3 id="10-校准系统时区"><a href="#10-校准系统时区" class="headerlink" title="10.校准系统时区"></a>10.校准系统时区</h3><p>把宿主机/etc/localtime文件复制过来。</p>
+<h2 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h2><p>做完以上操作之后就有了个能在安卓上跑的linux<br>使用chroot开启<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chroot . /linuxrc</span><br></pre></td></tr></table></figure></p>
+<p>然后终端就会卡着不动，这正常因为我没有在initab设置本地登录。这也不可以。关闭这个终端用telnet连接即可<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">telnet 127.0.0.1:23</span><br></pre></td></tr></table></figure></p>
+<p>因为登录认证文件用的是宿主机的，所以登录密码与宿主机一致。</p>
+<p>如果没有什么问题就成功了，但是此时目标系统还未安装各类工具软件，busybox自带dpkg可以在debian的官网上下载apt以及依赖包安装并配置好，这里就不再详述了。<br>…</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+      <div>
+        <div style="padding: 10px 0; margin: 20px auto; width: 90%; text-align: center;">
+  <div>你可以考虑向我捐赠</div>
+  <button id="rewardButton" disable="enable" onclick="var qr = document.getElementById('QR'); if (qr.style.display === 'none') {qr.style.display='block';} else {qr.style.display='none'}">
+    <span>打赏</span>
+  </button>
+  <div id="QR" style="display: none;">
+
+    
+      <div id="wechat" style="display: inline-block">
+        <img id="wechat_qr" src="/images/wechatpay.png" alt="安哲贝 微信支付">
+        <p>微信支付</p>
+      </div>
+    
+
+    
+      <div id="alipay" style="display: inline-block">
+        <img id="alipay_qr" src="/images/alipay.jpg" alt="安哲贝 支付宝">
+        <p>支付宝</p>
+      </div>
+    
+
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/linux/" rel="tag"># linux</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/01/08/Android-run-debian/" rel="next" title="在安卓上使用运行debian">
+                <i class="fa fa-chevron-left"></i> 在安卓上使用运行debian
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/03/10/orangepi-config/" rel="prev" title="无屏幕无pc配置安装香橙派">
+                无屏幕无pc配置安装香橙派 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">安哲贝</p>
+              <p class="site-description motion-element" itemprop="description">Entropy</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#准备"><span class="nav-number">1.</span> <span class="nav-text">准备</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#编译busybox并制作rootfs"><span class="nav-number">2.</span> <span class="nav-text">编译busybox并制作rootfs</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-编译并安装busybox"><span class="nav-number">2.1.</span> <span class="nav-text">1.编译并安装busybox</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-创建必要的文件夹并添加必要的库文件"><span class="nav-number">2.2.</span> <span class="nav-text">2.创建必要的文件夹并添加必要的库文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-为linuxrc进程提供配置文件：-inittab"><span class="nav-number">2.3.</span> <span class="nav-text">3.为linuxrc进程提供配置文件：(inittab)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-建立系统初始化脚本"><span class="nav-number">2.4.</span> <span class="nav-text">4.建立系统初始化脚本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5-为系统准备一个“文件系统表”配置文件-etc-fstab"><span class="nav-number">2.5.</span> <span class="nav-text">5.为系统准备一个“文件系统表”配置文件/etc/fstab</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6-添加登录认证功能"><span class="nav-number">2.6.</span> <span class="nav-text">6.添加登录认证功能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7-为系统提供主机名称"><span class="nav-number">2.7.</span> <span class="nav-text">7.为系统提供主机名称</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#8-为系统设置输入提示信息"><span class="nav-number">2.8.</span> <span class="nav-text">8.为系统设置输入提示信息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#9-添加dns功能"><span class="nav-number">2.9.</span> <span class="nav-text">9.添加dns功能</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#10-校准系统时区"><span class="nav-number">2.10.</span> <span class="nav-text">10.校准系统时区</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试"><span class="nav-number">3.</span> <span class="nav-text">测试</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; 2017 &mdash; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">安哲贝</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
